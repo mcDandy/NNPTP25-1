@@ -1,18 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.IO;
 using System.Drawing;
-using System.Drawing.Design;
-using System.Drawing.Drawing2D;
-using System.Drawing.Imaging;
-using System.Drawing.Printing;
-using System.Drawing.Text;
-using System.Drawing.Drawing2D;
-using System.Linq.Expressions;
-using System.Threading;
 using NNPTPZ1.Mathematics;
 
 namespace NNPTPZ1
@@ -25,130 +13,100 @@ namespace NNPTPZ1
     {
         static void Main(string[] args)
         {
-            int[] intargs = new int[2];
-            for (int i = 0; i < intargs.Length; i++)
-            {
-                intargs[i] = int.Parse(args[i]);
-            }
-            double[] doubleargs = new double[4];
-            for (int i = 0; i < doubleargs.Length; i++)
-            {
-                doubleargs[i] = double.Parse(args[i + 2]);
-            }
+            int width = int.Parse(args[0]);
+            int height = int.Parse(args[1]);
+            double xmin = double.Parse(args[2]);
+            double xmax = double.Parse(args[3]);
+            double ymin = double.Parse(args[4]);
+            double ymax = double.Parse(args[5]);
             string output = args[6];
-            // TODO: add parameters from args?
-            Bitmap bmp = new Bitmap(intargs[0], intargs[1]);
-            double xmin = doubleargs[0];
-            double xmax = doubleargs[1];
-            double ymin = doubleargs[2];
-            double ymax = doubleargs[3];
 
-            double xstep = (xmax - xmin) / intargs[0];
-            double ystep = (ymax - ymin) / intargs[1];
+            Size imageSize = new Size(width, height);
+
+            // TODO: add parameters from args?
+            Bitmap bmp = new Bitmap(imageSize.Width, imageSize.Height);
+
+
+            double xstep = (xmax - xmin) / imageSize.Width;
+            double ystep = (ymax - ymin) / imageSize.Height;
 
             List<Cplx> koreny = new List<Cplx>();
             // TODO: poly should be parameterised?
-            Poly p = new Poly();
-            p.Coe.Add(new Cplx() { Re = 1 });
-            p.Coe.Add(Cplx.Zero);
-            p.Coe.Add(Cplx.Zero);
+            Poly polynomial = new Poly();
+            polynomial.Coefficients.Add(new Cplx() { Real = 1 });
+            polynomial.Coefficients.Add(Cplx.Zero);
+            polynomial.Coefficients.Add(Cplx.Zero);
             //p.Coe.Add(Cplx.Zero);
-            p.Coe.Add(new Cplx() { Re = 1 });
-            Poly ptmp = p;
-            Poly pd = p.Derive();
+            polynomial.Coefficients.Add(new Cplx() { Real = 1 });
+            Poly polyTmp = polynomial;
+            Poly polyDerivative = polynomial.Derive();
 
-            Console.WriteLine(p);
-            Console.WriteLine(pd);
+            Console.WriteLine(polynomial);
+            Console.WriteLine(polyDerivative);
 
-            var clrs = new Color[]
+            Color[] colorPalete = new Color[]
             {
                 Color.Red, Color.Blue, Color.Green, Color.Yellow, Color.Orange, Color.Fuchsia, Color.Gold, Color.Cyan, Color.Magenta
             };
 
-            var maxid = 0;
+
 
             // TODO: cleanup!!!
             // for every pixel in image...
-            for (int i = 0; i < intargs[0]; i++)
+            for (int i = 0; i < imageSize.Height; i++)
             {
-                for (int j = 0; j < intargs[1]; j++)
+                for (int j = 0; j < imageSize.Width; j++)
                 {
                     // find "world" coordinates of pixel
                     double y = ymin + i * ystep;
                     double x = xmin + j * xstep;
 
-                    Cplx ox = new Cplx()
+                    Cplx complexCoords = new Cplx()
                     {
-                        Re = x,
-                        Imaginari = (float)(y)
+                        Real = x,
+                        Imaginary = y
                     };
 
-                    if (ox.Re == 0)
-                        ox.Re = 0.0001;
-                    if (ox.Imaginari == 0)
-                        ox.Imaginari = 0.0001f;
+                    complexCoords.Real = complexCoords.Real == 0 ? 0.0001 : complexCoords.Real;
+                    complexCoords.Imaginary = complexCoords.Imaginary == 0 ? 0.0001 : complexCoords.Imaginary;
 
-                    //Console.WriteLine(ox);
-
-                    // find solution of equation using newton's iteration
-                    float it = 0;
-                    for (int q = 0; q< 30; q++)
+                    for (int q = 0; q < 30;)
                     {
-                        var diff = p.Eval(ox).Divide(pd.Eval(ox));
-                        ox = ox.Subtract(diff);
+                        Cplx diff = polynomial.Eval(complexCoords).Divide(polyDerivative.Eval(complexCoords));
+                        complexCoords = complexCoords.Subtract(diff);
 
-                        //Console.WriteLine($"{q} {ox} -({diff})");
-                        if (Math.Pow(diff.Re, 2) + Math.Pow(diff.Imaginari, 2) >= 0.5)
+                        if (Math.Pow(diff.Real, 2) + Math.Pow(diff.Imaginary, 2) < 0.5)
                         {
-                            q--;
+                            q++;
                         }
-                        it++;
                     }
 
-                    //Console.ReadKey();
-
                     // find solution root number
-                    var known = false;
-                    var id = 0;
-                    for (int w = 0; w <koreny.Count;w++)
+                    bool known = false;
+                    int pocetKorenu = 0;
+                    for (int w = 0; w < koreny.Count; w++)
                     {
-                        if (Math.Pow(ox.Re- koreny[w].Re, 2) + Math.Pow(ox.Imaginari - koreny[w].Imaginari, 2) <= 0.01)
+                        if (Math.Pow(complexCoords.Real - koreny[w].Real, 2) + Math.Pow(complexCoords.Imaginary - koreny[w].Imaginary, 2) <= 0.01)
                         {
                             known = true;
-                            id = w;
+                            pocetKorenu = w;
                         }
                     }
                     if (!known)
                     {
-                        koreny.Add(ox);
-                        id = koreny.Count;
-                        maxid = id + 1; 
+                        koreny.Add(complexCoords);
+                        pocetKorenu = koreny.Count;
                     }
 
                     // colorize pixel according to root number
-                    //int vv = id;
-                    //int vv = id * 50 + (int)it*5;
-                    var vv = clrs[id % clrs.Length];
-                    vv = Color.FromArgb(vv.R, vv.G, vv.B);
-                    vv = Color.FromArgb(Math.Min(Math.Max(0, vv.R-(int)it*2), 255), Math.Min(Math.Max(0, vv.G - (int)it*2), 255), Math.Min(Math.Max(0, vv.B - (int)it*2), 255));
-                    //vv = Math.Min(Math.Max(0, vv), 255);
-                    bmp.SetPixel(j, i, vv);
-                    //bmp.SetPixel(j, i, Color.FromArgb(vv, vv, vv));
+                    Color pixelColor = colorPalete[pocetKorenu % colorPalete.Length];
+                    bmp.SetPixel(j, i, pixelColor);
                 }
             }
 
-            // TODO: delete I suppose...
-            //for (int i = 0; i < 300; i++)
-            //{
-            //    for (int j = 0; j < 300; j++)
-            //    {
-            //        Color c = bmp.GetPixel(j, i);
-            //        int nv = (int)Math.Floor(c.R * (255.0 / maxid));
-            //        bmp.SetPixel(j, i, Color.FromArgb(nv, nv, nv));
-            //    }
-            //}
 
-                    bmp.Save(output ?? "../../../out.png");
+
+            bmp.Save(output ?? "../../../out.png");
             //Console.ReadKey();
         }
     }
@@ -160,15 +118,15 @@ namespace NNPTPZ1
             /// <summary>
             /// Coe
             /// </summary>
-            public List<Cplx> Coe { get; set; }
+            public List<Cplx> Coefficients { get; set; }
 
             /// <summary>
             /// Constructor
             /// </summary>
-            public Poly() => Coe = new List<Cplx>();
+            public Poly() => Coefficients = new List<Cplx>();
 
             public void Add(Cplx coe) =>
-                Coe.Add(coe);
+                Coefficients.Add(coe);
 
             /// <summary>
             /// Derives this polynomial and creates new one
@@ -177,9 +135,9 @@ namespace NNPTPZ1
             public Poly Derive()
             {
                 Poly p = new Poly();
-                for (int q = 1; q < Coe.Count; q++)
+                for (int q = 1; q < Coefficients.Count; q++)
                 {
-                    p.Coe.Add(Coe[q].Multiply(new Cplx() { Re = q }));
+                    p.Coefficients.Add(Coefficients[q].Multiply(new Cplx() { Real = q }));
                 }
 
                 return p;
@@ -192,7 +150,7 @@ namespace NNPTPZ1
             /// <returns>y</returns>
             public Cplx Eval(double x)
             {
-                var y = Eval(new Cplx() { Re = x, Imaginari = 0 });
+                Cplx y = Eval(new Cplx() { Real = x, Imaginary = 0 });
                 return y;
             }
 
@@ -204,9 +162,9 @@ namespace NNPTPZ1
             public Cplx Eval(Cplx x)
             {
                 Cplx s = Cplx.Zero;
-                for (int i = 0; i < Coe.Count; i++)
+                for (int i = 0; i < Coefficients.Count; i++)
                 {
-                    Cplx coef = Coe[i];
+                    Cplx coef = Coefficients[i];
                     Cplx bx = x;
                     int power = i;
 
@@ -232,9 +190,9 @@ namespace NNPTPZ1
             {
                 string s = "";
                 int i = 0;
-                for (; i < Coe.Count; i++)
+                for (; i < Coefficients.Count; i++)
                 {
-                    s += Coe[i];
+                    s += Coefficients[i];
                     if (i > 0)
                     {
                         int j = 0;
@@ -243,8 +201,8 @@ namespace NNPTPZ1
                             s += "x";
                         }
                     }
-                    if (i+1<Coe.Count)
-                    s += " + ";
+                    if (i + 1 < Coefficients.Count)
+                        s += " + ";
                 }
                 return s;
             }
@@ -252,23 +210,23 @@ namespace NNPTPZ1
 
         public class Cplx
         {
-            public double Re { get; set; }
-            public float Imaginari { get; set; }
+            public double Real { get; set; }
+            public double Imaginary { get; set; }
 
             public override bool Equals(object obj)
             {
                 if (obj is Cplx)
                 {
                     Cplx x = obj as Cplx;
-                    return x.Re == Re && x.Imaginari == Imaginari;
+                    return x.Real == Real && x.Imaginary == Imaginary;
                 }
                 return base.Equals(obj);
             }
 
             public readonly static Cplx Zero = new Cplx()
             {
-                Re = 0,
-                Imaginari = 0
+                Real = 0,
+                Imaginary = 0
             };
 
             public Cplx Multiply(Cplx b)
@@ -277,13 +235,13 @@ namespace NNPTPZ1
                 // aRe*bRe + aRe*bIm*i + aIm*bRe*i + aIm*bIm*i*i
                 return new Cplx()
                 {
-                    Re = a.Re * b.Re - a.Imaginari * b.Imaginari,
-                    Imaginari = (float)(a.Re * b.Imaginari + a.Imaginari * b.Re)
+                    Real = a.Real * b.Real - a.Imaginary * b.Imaginary,
+                    Imaginary = (float)(a.Real * b.Imaginary + a.Imaginary * b.Real)
                 };
             }
             public double GetAbS()
             {
-                return Math.Sqrt( Re * Re + Imaginari * Imaginari);
+                return Math.Sqrt(Real * Real + Imaginary * Imaginary);
             }
 
             public Cplx Add(Cplx b)
@@ -291,27 +249,27 @@ namespace NNPTPZ1
                 Cplx a = this;
                 return new Cplx()
                 {
-                    Re = a.Re + b.Re,
-                    Imaginari = a.Imaginari + b.Imaginari
+                    Real = a.Real + b.Real,
+                    Imaginary = a.Imaginary + b.Imaginary
                 };
             }
             public double GetAngleInDegrees()
             {
-                return Math.Atan(Imaginari / Re);
+                return Math.Atan(Imaginary / Real);
             }
             public Cplx Subtract(Cplx b)
             {
                 Cplx a = this;
                 return new Cplx()
                 {
-                    Re = a.Re - b.Re,
-                    Imaginari = a.Imaginari - b.Imaginari
+                    Real = a.Real - b.Real,
+                    Imaginary = a.Imaginary - b.Imaginary
                 };
             }
 
             public override string ToString()
             {
-                return $"({Re} + {Imaginari}i)";
+                return $"({Real} + {Imaginary}i)";
             }
 
             internal Cplx Divide(Cplx b)
@@ -319,13 +277,13 @@ namespace NNPTPZ1
                 // (aRe + aIm*i) / (bRe + bIm*i)
                 // ((aRe + aIm*i) * (bRe - bIm*i)) / ((bRe + bIm*i) * (bRe - bIm*i))
                 //  bRe*bRe - bIm*bIm*i*i
-                var tmp = this.Multiply(new Cplx() { Re = b.Re, Imaginari = -b.Imaginari });
-                var tmp2 = b.Re * b.Re + b.Imaginari * b.Imaginari;
+                Cplx tmp = this.Multiply(new Cplx() { Real = b.Real, Imaginary = -b.Imaginary });
+                double tmp2 = b.Real * b.Real + b.Imaginary * b.Imaginary;
 
                 return new Cplx()
                 {
-                    Re = tmp.Re / tmp2,
-                    Imaginari = (float)(tmp.Imaginari / tmp2)
+                    Real = tmp.Real / tmp2,
+                    Imaginary = (float)(tmp.Imaginary / tmp2)
                 };
             }
         }
